@@ -1,11 +1,18 @@
+/*
+ * WARNING, All test cases exist in osmdroid-android-it/src/main/java (maven project)
+ *
+ * During build time (with gradle), these tests are copied from osmdroid-android-it to OpenStreetMapViewer/src/androidTest/java
+ * DO NOT Modify files in OpenSteetMapViewer/src/androidTest. You will loose your changes when building!
+ *
+ */
 package org.osmdroid.views;
 
-import org.osmdroid.MapActivity;
-import org.osmdroid.MapFragment;
+import org.osmdroid.StarterMapActivity;
+import org.osmdroid.StarterMapFragment;
 import org.osmdroid.R;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.Projection;
-
+import org.osmdroid.tileprovider.util.Counters;
 import android.graphics.Point;
 import android.test.ActivityInstrumentationTestCase2;
 import android.test.UiThreadTest;
@@ -15,10 +22,11 @@ import android.support.v4.app.FragmentManager;
  * @author Neil Boyd
  * 
  */
-public class OpenStreetMapViewTest extends ActivityInstrumentationTestCase2<MapActivity> {
+public class OpenStreetMapViewTest extends ActivityInstrumentationTestCase2<StarterMapActivity> {
 
 	public OpenStreetMapViewTest() {
-        super(MapActivity.class);
+        super(StarterMapActivity.class);
+		Counters.reset();
     }
 	
 	private MapView mOpenStreetMapView;
@@ -27,7 +35,7 @@ public class OpenStreetMapViewTest extends ActivityInstrumentationTestCase2<MapA
 	protected void setUp() throws Exception {
 
 		FragmentManager fm = getActivity().getSupportFragmentManager();
-		MapFragment fragment = (MapFragment)fm.findFragmentById(R.id.map_container);
+		StarterMapFragment fragment = (StarterMapFragment)fm.findFragmentById(R.id.map_container);
 		mOpenStreetMapView = fragment.getMapView();
 
 		super.setUp();

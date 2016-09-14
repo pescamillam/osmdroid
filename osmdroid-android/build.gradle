@@ -1,4 +1,13 @@
-apply plugin: 'java'
-sourceSets {
-    main.java.srcDirs = ['src\main\java','src\main\resources','src\test\java','src\test\resources']
+description = 'An Android library to display OpenStreetMap views.'
+apply plugin: 'com.android.library'
+apply from: "${rootDir}/gradle/android-support.gradle"
+
+android {
+    lintOptions {
+        abortOnError false
+    }
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.8.2'
 }

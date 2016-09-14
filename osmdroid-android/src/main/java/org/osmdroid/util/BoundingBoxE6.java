@@ -19,6 +19,7 @@ import android.os.Parcelable;
  * @author Nicolas Gramlich
  *
  */
+@Deprecated
 public class BoundingBoxE6 implements Parcelable, Serializable, MapViewConstants {
 
 	// ===========================================================
@@ -40,6 +41,13 @@ public class BoundingBoxE6 implements Parcelable, Serializable, MapViewConstants
 	// Constructors
 	// ===========================================================
 
+	/**
+	 * a new bounding box
+	 * @param northE6
+	 * @param eastE6
+	 * @param southE6
+     * @param westE6
+     */
 	public BoundingBoxE6(final int northE6, final int eastE6, final int southE6, final int westE6) {
 		this.mLatNorthE6 = northE6;
 		this.mLonEastE6 = eastE6;
@@ -47,6 +55,13 @@ public class BoundingBoxE6 implements Parcelable, Serializable, MapViewConstants
 		this.mLonWestE6 = westE6;
 	}
 
+	/**
+	 * makes a new bounding box
+	 * @param north
+	 * @param east
+	 * @param south
+     * @param west
+     */
 	public BoundingBoxE6(final double north, final double east, final double south,
 			final double west) {
 		this.mLatNorthE6 = (int) (north * 1E6);
@@ -223,8 +238,19 @@ public class BoundingBoxE6 implements Parcelable, Serializable, MapViewConstants
 	}
 
 	public boolean contains(final int aLatitudeE6, final int aLongitudeE6) {
-		return ((aLatitudeE6 < this.mLatNorthE6) && (aLatitudeE6 > this.mLatSouthE6))
-				&& ((aLongitudeE6 < this.mLonEastE6) && (aLongitudeE6 > this.mLonWestE6));
+		if (aLatitudeE6 < this.mLatNorthE6 && aLatitudeE6 > this.mLatSouthE6) {
+			if (this.mLonWestE6 < this.mLonEastE6) {
+				if (aLongitudeE6 < this.mLonEastE6 && aLongitudeE6 > this.mLonWestE6) {
+					return true;
+				}
+			} else { 
+				// boundingbox spans 180th meridian 
+				if (aLongitudeE6 < this.mLonEastE6 || aLongitudeE6 > this.mLonWestE6) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	// ===========================================================

@@ -1,7 +1,7 @@
 package org.osmdroid.views.overlay;
 
-import org.osmdroid.DefaultResourceProxyImpl;
-import org.osmdroid.ResourceProxy;
+import org.osmdroid.library.R;
+import org.osmdroid.tileprovider.BitmapPool;
 import org.osmdroid.tileprovider.MapTile;
 import org.osmdroid.tileprovider.MapTileProviderBase;
 import org.osmdroid.tileprovider.ReusableBitmapDrawable;
@@ -11,22 +11,24 @@ import org.osmdroid.util.TileLooper;
 import org.osmdroid.util.TileSystem;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.Projection;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.ColorFilter;
+import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.SubMenu;
+import org.osmdroid.api.IMapView;
 
 /**
  * These objects are the principle consumer of map tiles.
@@ -37,16 +39,17 @@ import android.view.SubMenu;
 
 public class TilesOverlay extends Overlay implements IOverlayMenuProvider {
 
-	private static final Logger logger = LoggerFactory.getLogger(TilesOverlay.class);
 
 	public static final int MENU_MAP_MODE = getSafeMenuId();
 	public static final int MENU_TILE_SOURCE_STARTING_ID = getSafeMenuIdSequence(TileSourceFactory
 			.getTileSources().size());
 	public static final int MENU_OFFLINE = getSafeMenuId();
 
+	private Context ctx;
 	/** Current tile source */
 	protected final MapTileProviderBase mTileProvider;
 
+	protected Drawable userSelectedLoadingDrawable = null;
 	/* to avoid allocations during draw */
 	protected final Paint mDebugPaint = new Paint();
 	private final Rect mTileRect = new Rect();
@@ -68,12 +71,23 @@ public class TilesOverlay extends Overlay implements IOverlayMenuProvider {
 	/** For overshooting the tile cache **/
 	private int mOvershootTileCache = 0;
 
-	public TilesOverlay(final MapTileProviderBase aTileProvider, final Context aContext) {
-		this(aTileProvider, new DefaultResourceProxyImpl(aContext));
-	}
+	//Issue 133 night mode
+	private ColorFilter currentColorFilter=null;
+	final static float[] negate ={
+		-1.0f,0,0,0,255,        //red
+		0,-1.0f,0,0,255,//green
+		0,0,-1.0f,0,255,//blue
+		0,0,0,1.0f,0 //alpha
+	};
+	/**
+	 * provides a night mode like affect by inverting the map tile colors
+	 */
+	public final static ColorFilter INVERT_COLORS = new ColorMatrixColorFilter(negate);
 
-	public TilesOverlay(final MapTileProviderBase aTileProvider, final ResourceProxy pResourceProxy) {
-		super(pResourceProxy);
+
+	public TilesOverlay(final MapTileProviderBase aTileProvider, final Context aContext) {
+		super();
+		this.ctx=aContext;
 		if (aTileProvider == null) {
 			throw new IllegalArgumentException(
 					"You must pass a valid tile provider to the tiles overlay.");
@@ -81,9 +95,48 @@ public class TilesOverlay extends Overlay implements IOverlayMenuProvider {
 		this.mTileProvider = aTileProvider;
 	}
 
+	/**
+	 * See issue https://github.com/osmdroid/osmdroid/issues/330
+	 * customizable override for the grey grid
+	 * @since 5.2+
+	 * @param drawable
+     */
+	public void setLoadingDrawable(final Drawable drawable){
+		userSelectedLoadingDrawable = drawable;
+	}
+
 	@Override
 	public void onDetach(final MapView pMapView) {
 		this.mTileProvider.detach();
+		ctx=null;
+		if (mLoadingTile!=null) {
+			// Only recycle if we are running on a project less than 2.3.3 Gingerbread.
+			if (Build.VERSION.SDK_INT < Build.VERSION_CODES.GINGERBREAD) {
+				if (mLoadingTile instanceof BitmapDrawable) {
+					final Bitmap bitmap = ((BitmapDrawable) mLoadingTile).getBitmap();
+					if (bitmap != null) {
+						bitmap.recycle();
+					}
+				}
+			}
+			if (mLoadingTile instanceof ReusableBitmapDrawable)
+				BitmapPool.getInstance().returnDrawableToPool((ReusableBitmapDrawable) mLoadingTile);
+		}
+		mLoadingTile=null;
+		if (userSelectedLoadingDrawable!=null){
+			// Only recycle if we are running on a project less than 2.3.3 Gingerbread.
+			if (Build.VERSION.SDK_INT < Build.VERSION_CODES.GINGERBREAD) {
+				if (userSelectedLoadingDrawable instanceof BitmapDrawable) {
+					final Bitmap bitmap = ((BitmapDrawable) userSelectedLoadingDrawable).getBitmap();
+					if (bitmap != null) {
+						bitmap.recycle();
+					}
+				}
+			}
+			if (userSelectedLoadingDrawable instanceof ReusableBitmapDrawable)
+				BitmapPool.getInstance().returnDrawableToPool((ReusableBitmapDrawable) userSelectedLoadingDrawable);
+		}
+		userSelectedLoadingDrawable=null;
 	}
 
 	public int getMinimumZoomLevel() {
@@ -116,7 +169,7 @@ public class TilesOverlay extends Overlay implements IOverlayMenuProvider {
 	protected void draw(Canvas c, MapView osmv, boolean shadow) {
 
 		if (DEBUGMODE) {
-			logger.trace("onDraw(" + shadow + ")");
+               Log.d(IMapView.LOGTAG,"onDraw(" + shadow + ")");
 		}
 
 		if (shadow) {
@@ -127,10 +180,14 @@ public class TilesOverlay extends Overlay implements IOverlayMenuProvider {
 
 		// Get the area we are drawing to
 		Rect screenRect = projection.getScreenRect();
+		//No overflow detected here! Log.d(IMapView.LOGTAG, "BEFORE Rect is " + screenRect.toString() + mTopLeftMercator.toString());
 		projection.toMercatorPixels(screenRect.left, screenRect.top, mTopLeftMercator);
+
 		projection.toMercatorPixels(screenRect.right, screenRect.bottom, mBottomRightMercator);
+		//No overflow detected here! Log.d(IMapView.LOGTAG, "AFTER Rect is " + screenRect.toString()  + mTopLeftMercator.toString() + mBottomRightMercator.toString());
 		mViewPort.set(mTopLeftMercator.x, mTopLeftMercator.y, mBottomRightMercator.x,
 				mBottomRightMercator.y);
+		//No overflow detected here! Log.d(IMapView.LOGTAG, "AFTER Rect is " + mViewPort.toString());
 
 		// Draw the tiles!
 		drawTiles(c, projection, projection.getZoomLevel(), TileSystem.getTileSize(), mViewPort);
@@ -167,6 +224,7 @@ public class TilesOverlay extends Overlay implements IOverlayMenuProvider {
 		}
 		@Override
 		public void handleTile(final Canvas pCanvas, final int pTileSizePx, final MapTile pTile, final int pX, final int pY) {
+			//no overflow detected here Log.d(IMapView.LOGTAG, "handleTile " + pTile.toString() + ","+pX + "," + pY);
 			Drawable currentMapTile = mTileProvider.getMapTile(pTile);
 			boolean isReusable = currentMapTile instanceof ReusableBitmapDrawable;
 			final ReusableBitmapDrawable reusableBitmapDrawable =
@@ -212,6 +270,7 @@ public class TilesOverlay extends Overlay implements IOverlayMenuProvider {
 
 	protected void onTileReadyToDraw(final Canvas c, final Drawable currentMapTile,
 			final Rect tileRect) {
+		currentMapTile.setColorFilter(currentColorFilter);
 		mProjection.toPixelsFromMercator(tileRect.left, tileRect.top, mTilePointMercator);
 		tileRect.offsetTo(mTilePointMercator.x, mTilePointMercator.y);
 		currentMapTile.setBounds(tileRect);
@@ -232,23 +291,22 @@ public class TilesOverlay extends Overlay implements IOverlayMenuProvider {
 	public boolean onCreateOptionsMenu(final Menu pMenu, final int pMenuIdOffset,
 			final MapView pMapView) {
 		final SubMenu mapMenu = pMenu.addSubMenu(0, MENU_MAP_MODE + pMenuIdOffset, Menu.NONE,
-				mResourceProxy.getString(ResourceProxy.string.map_mode)).setIcon(
-				mResourceProxy.getDrawable(ResourceProxy.bitmap.ic_menu_mapmode));
+				R.string.map_mode).setIcon(R.drawable.ic_menu_mapmode);
 
 		for (int a = 0; a < TileSourceFactory.getTileSources().size(); a++) {
 			final ITileSource tileSource = TileSourceFactory.getTileSources().get(a);
 			mapMenu.add(MENU_MAP_MODE + pMenuIdOffset, MENU_TILE_SOURCE_STARTING_ID + a
-					+ pMenuIdOffset, Menu.NONE, tileSource.localizedName(mResourceProxy));
+					+ pMenuIdOffset, Menu.NONE, tileSource.name());
 		}
 		mapMenu.setGroupCheckable(MENU_MAP_MODE + pMenuIdOffset, true, true);
 
-		final String title = pMapView.getResourceProxy().getString(
-				pMapView.useDataConnection() ? ResourceProxy.string.offline_mode
-						: ResourceProxy.string.online_mode);
-		final Drawable icon = pMapView.getResourceProxy().getDrawable(
-				ResourceProxy.bitmap.ic_menu_offline);
-		pMenu.add(0, MENU_OFFLINE + pMenuIdOffset, Menu.NONE, title).setIcon(icon);
-
+		if (ctx!=null) {
+			final String title = ctx.getString(
+					pMapView.useDataConnection() ? R.string.set_mode_offline
+							: R.string.set_mode_online);
+			final Drawable icon = ctx.getResources().getDrawable(R.drawable.ic_menu_offline);
+			pMenu.add(0, MENU_OFFLINE + pMenuIdOffset, Menu.NONE, title).setIcon(icon);
+		}
 		return true;
 	}
 
@@ -262,9 +320,8 @@ public class TilesOverlay extends Overlay implements IOverlayMenuProvider {
 		}
 
 		pMenu.findItem(MENU_OFFLINE + pMenuIdOffset).setTitle(
-				pMapView.getResourceProxy().getString(
-						pMapView.useDataConnection() ? ResourceProxy.string.offline_mode
-								: ResourceProxy.string.online_mode));
+						pMapView.useDataConnection() ? R.string.set_mode_offline
+								: R.string.set_mode_online);
 
 		return true;
 	}
@@ -319,6 +376,8 @@ public class TilesOverlay extends Overlay implements IOverlayMenuProvider {
 	}
 
 	private Drawable getLoadingTile() {
+		if (userSelectedLoadingDrawable!=null)
+			return userSelectedLoadingDrawable;
 		if (mLoadingTile == null && mLoadingBackgroundColor != Color.TRANSPARENT) {
 			try {
 				final int tileSize = mTileProvider.getTileSource() != null ? mTileProvider
@@ -337,7 +396,10 @@ public class TilesOverlay extends Overlay implements IOverlayMenuProvider {
 				}
 				mLoadingTile = new BitmapDrawable(bitmap);
 			} catch (final OutOfMemoryError e) {
-				logger.error("OutOfMemoryError getting loading tile");
+				Log.e(IMapView.LOGTAG, "OutOfMemoryError getting loading tile");
+				System.gc();
+			} catch (final NullPointerException e) {
+				Log.e(IMapView.LOGTAG, "NullPointerException getting loading tile");
 				System.gc();
 			}
 		}
@@ -375,5 +437,18 @@ public class TilesOverlay extends Overlay implements IOverlayMenuProvider {
 	 */
 	public int getOvershootTileCache() {
 		return mOvershootTileCache;
+	}
+
+
+	/**
+	 * sets the current color filter, which is applied to tiles before being drawn to the screen.
+	 * Use this to enable night mode or any other tile rendering adjustment as necessary. use null to clear.
+	 * INVERT_COLORS provides color inversion for convenience and to support the previous night mode
+	 * @param filter
+	 * @since 5.1
+     */
+	public void setColorFilter(ColorFilter filter) {
+
+		this.currentColorFilter=filter;
 	}
 }

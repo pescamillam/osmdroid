@@ -1,3 +1,10 @@
+/*
+ * WARNING, All test cases exist in osmdroid-android-it/src/main/java (maven project)
+ *
+ * During build time (with gradle), these tests are copied from osmdroid-android-it to OpenStreetMapViewer/src/androidTest/java
+ * DO NOT Modify files in OpenSteetMapViewer/src/androidTest. You will loose your changes when building!
+ *
+ */
 package org.osmdroid.tileprovider.modules;
 
 import java.util.LinkedList;
@@ -130,9 +137,13 @@ public class MapTileProviderTest extends AndroidTestCase {
 				new MapTileModuleProviderBase[] {}, mTileProviderCallback);
 		mTileProvider.loadMapTileAsync(state3);
 
-		// wait 4 seconds (because it takes 1 second for each tile + an extra
+		// wait up to 10 seconds (because it takes 1 second for each tile + an extra
 		// second)
-		Thread.sleep(4000);
+
+		long timeout=System.currentTimeMillis()+10000;
+		while (3 != mTiles.size() && System.currentTimeMillis() < timeout){
+			Thread.sleep(250);
+		}
 
 		// check that there are three tiles in the list (ie no duplicates)
 		assertEquals("Three tiles in the list", 3, mTiles.size());
@@ -172,9 +183,12 @@ public class MapTileProviderTest extends AndroidTestCase {
 				new MapTileModuleProviderBase[] {}, mTileProviderCallback);
 		mTileProvider.loadMapTileAsync(state4);
 
-		// wait 4 seconds (because it takes 1 second for each tile + an extra
+		// wait up to 10 seconds (because it takes 1 second for each tile + an extra
 		// second)
-		Thread.sleep(4000);
+		long timeout=System.currentTimeMillis()+10000;
+		while (3 != mTiles.size() && System.currentTimeMillis() < timeout){
+			Thread.sleep(250);
+		}
 
 		// check that there are three tiles in the list (ie no duplicates)
 		assertEquals("Three tiles in the list", 3, mTiles.size());

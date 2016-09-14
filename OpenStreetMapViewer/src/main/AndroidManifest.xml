@@ -1,83 +1,189 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-		package="org.osmdroid"
-		android:versionCode="16" android:versionName="4.4-SNAPSHOT">
+    package="org.osmdroid"
+    android:versionCode="20"
+    android:versionName="5.3-SNAPSHOT">
 
-	<uses-sdk android:minSdkVersion="7" android:targetSdkVersion="19" />
-	<supports-screens android:largeScreens="true" android:normalScreens="true" android:anyDensity="true" />
+    <uses-sdk
+        android:minSdkVersion="8"
+        android:targetSdkVersion="23" />
 
-	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-	<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-	<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-	<uses-permission android:name="android.permission.INTERNET" />
-	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <supports-screens
+        android:anyDensity="true"
+        android:largeScreens="true"
+        android:normalScreens="true" />
 
-	<uses-feature android:name="android.hardware.location.network" android:required="false" />
-	<uses-feature android:name="android.hardware.location.gps" android:required="false" />
-	<uses-feature android:name="android.hardware.telephony" android:required="false" />
-	<uses-feature android:name="android.hardware.wifi" android:required="false" />
+    <!-- PROTECTION_NORMAL permissions, automatically granted -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
 
-	<application
-		android:icon="@drawable/icon"
-		android:label="@string/app_name"
-		android:hardwareAccelerated="true">
+    <!-- DANGEROUS PERMISSIONS, must request -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
-		<!-- all applications based on this code should get their own Bing key -->
-		<meta-data android:name="BING_KEY" android:value="ApEqyap8rTa4WTNCNv-3pAGQc7XUsHS6595tuDI3MHR59QlahJ5bqYGYhMYJq6Ae" />
+    <uses-feature
+        android:name="android.hardware.location.network"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.location.gps"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.wifi"
+        android:required="false" />
 
-		<uses-library android:name="com.google.android.maps" android:required="false" />
+    <application
+        android:name=".OsmApplication"
+        android:hardwareAccelerated="true"
+        android:largeHeap="true"
+        android:icon="@drawable/icon"
+        android:label="@string/app_name">
 
-		<activity android:icon="@drawable/icon"
-			android:label="Open Map" android:name="MapActivity">
-			<intent-filter>
-				<action android:name="android.intent.action.MAIN"></action>
-				<category android:name="android.intent.category.LAUNCHER"></category>
-			</intent-filter>
-		</activity>
-		<activity android:label="OSMSamples" android:name=".samples.SampleLoader">
-			<intent-filter>
-				<action android:name="android.intent.action.VIEW" />
-				<category android:name="android.intent.category.DEFAULT" />
-			</intent-filter>
-		</activity>
-		<activity android:name=".samples.SampleWithMinimapItemizedoverlay">
-			<intent-filter>
-				<action android:name="android.intent.action.VIEW" />
-				<category android:name="android.intent.category.DEFAULT" />
-			</intent-filter>
-		</activity>
-		<activity android:name=".samples.SampleExtensive">
-			<intent-filter>
-				<action android:name="android.intent.action.VIEW" />
-				<category android:name="android.intent.category.DEFAULT" />
-			</intent-filter>
-		</activity>
-		<activity android:name=".samples.SampleWithMinimapZoomcontrols">
-			<intent-filter>
-				<action android:name="android.intent.action.VIEW" />
-				<category android:name="android.intent.category.DEFAULT" />
-			</intent-filter>
-		</activity>
-		<activity android:name=".samples.SampleOSMContributor">
-			<intent-filter>
-				<action android:name="android.intent.action.VIEW" />
-				<category android:name="android.intent.category.DEFAULT" />
-			</intent-filter>
-		</activity>
-		<activity android:name=".samples.SampleWithTilesOverlay">
-			<intent-filter>
-				<action android:name="android.intent.action.VIEW" />
-				<category android:name="android.intent.category.DEFAULT" />
-			</intent-filter>
-		</activity>
-		<activity android:name=".samples.SampleWithTilesOverlayAndCustomTileSource">
-			<intent-filter>
-				<action android:name="android.intent.action.VIEW"></action>
-				<category android:name="android.intent.category.DEFAULT"></category>
-			</intent-filter>
-		</activity>
+        <!-- Bing maps tile users:
+        all applications based on this code should get their own Bing key
+        DO NOT USE THIS KEY IN YOUR APP
+        -->
+        <meta-data
+            android:name="BING_KEY"
+            android:value="ApEqyap8rTa4WTNCNv-3pAGQc7XUsHS6595tuDI3MHR59QlahJ5bqYGYhMYJq6Ae" />
 
-	</application>
+        <!-- Mapquest tile source users:
+         all applications based on this code should get their own MapQuest key
+         see https://developer.mapquest.com however the access token they provide doesn't work for
+         direct tile access, their web javascript api must handle it differently
+
+         DO NOT USE THIS KEY IN YOUR APP
+
+         NOTE: to get this key, we had to go to MapBox's website
+         Yes that's a MapBox token for MapQuest tiles.
+         https://www.mapbox.com/studio/account/tokens/
+         -->
+        <meta-data android:name="MAPQUEST_ACCESS_TOKEN" android:value="pk.eyJ1Ijoib3NtZHJvaWRidWdzIiwiYSI6ImNpcnE4eGJvYTBnbTF0Mm5rYXY3NGdwaXkifQ.VUOl3n5bL4-wdQo4RuTOvQ"/>
+
+        <!-- MapBox tile source users:
+        all applications based on this code should get their own MapBox key
+        see https://www.mapbox.com/studio/account/tokens/
+
+        DO NOT USE THIS KEY IN YOUR APP
+
+        NOTE: to get this key, we had to go to MapBox's website
+        https://www.mapbox.com/studio/account/tokens/
+        -->
+        <meta-data android:name="MAPBOX_MAPID" android:value="mapbox.mapbox-streets-v7"/>
+        <meta-data android:name="MAPBOX_ACCESS_TOKEN" android:value="pk.eyJ1Ijoib3NtZHJvaWRidWdzIiwiYSI6ImNpcnE4eGJvYTBnbTF0Mm5rYXY3NGdwaXkifQ.VUOl3n5bL4-wdQo4RuTOvQ"/>
+
+
+        <!-- HERE We Go tile source users:
+      all applications based on this code should get their own MapBox key
+      see https://www.mapbox.com/studio/account/tokens/
+
+      DO NOT USE THIS KEY IN YOUR APP
+
+      NOTE: to get this key, we had to go to MapBox's website
+      https://www.mapbox.com/studio/account/tokens/
+      -->
+        <meta-data android:name="HEREWEGO_MAPID" android:value="hybrid.day"/>
+        <meta-data android:name="HEREWEGO_APPID" android:value="pPgiLUtfWpnzdXttl41x"/>
+        <meta-data android:name="HEREWEGO_APPCODE" android:value="7vQVuYZ4Rv9ipi6ILzduhQ"/>
+        <!-- optional, use this to change the destination URL, default is shown below
+            other known urls
+                base.maps.api.here.com
+
+        <meta-data android:name="HEREWEGO_DOMAIN_OVERRIDE" android:value="aerial.maps.cit.api.here.com" />
+        -->
+
+
+
+
+        <uses-library
+            android:name="com.google.android.maps"
+            android:required="false" />
+
+        <activity
+            android:name=".MainActivity"
+            android:icon="@drawable/icon"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".StarterMapActivity"
+            android:icon="@drawable/icon"
+            android:label="OSMDroid Sample Map">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".samples.SampleWithMinimapItemizedoverlay"
+            android:label="OSMapView with ItemizedOverlay">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".samples.SampleExtensive"
+            android:label="OSMapView with UI Tools">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".samples.SampleWithMinimapZoomcontrols"
+            android:label="OSMapView with MiniMap &amp; Zoom">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".samples.SampleWithTilesOverlay"
+            android:label="OSMapView with Tiles Overlay">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".samples.SampleWithTilesOverlayAndCustomTileSource"
+            android:label="OSMapView with Custom Tiles">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        <activity android:name=".BugsTestingActivity"
+            android:label="OpenStreetMap Bug Drivers">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        <activity android:name=".ExtraSamplesActivity"
+            android:label="OpenStreetMap Extra Samples">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+    </application>
 
 </manifest>

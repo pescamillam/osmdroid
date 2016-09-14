@@ -1,9 +1,6 @@
 package org.osmdroid.views.overlay;
 
-import org.osmdroid.ResourceProxy;
 import org.osmdroid.views.MapView;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -13,6 +10,8 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.PorterDuff.Mode;
 import android.os.Build;
+import android.util.Log;
+import org.osmdroid.api.IMapView;
 
 /**
  * This will allow an {@link Overlay} that is not HW acceleration compatible to work in a HW
@@ -29,7 +28,6 @@ import android.os.Build;
  * </ol>
  */
 public abstract class NonAcceleratedOverlay extends Overlay {
-	private static final Logger logger = LoggerFactory.getLogger(NonAcceleratedOverlay.class);
 
 	private Bitmap mBackingBitmap;
 	private Canvas mBackingCanvas;
@@ -41,13 +39,16 @@ public abstract class NonAcceleratedOverlay extends Overlay {
 	 */
 	protected abstract void onDraw(Canvas c, MapView osmv, boolean shadow);
 
+	/** Use {@link #NonAcceleratedOverlay()} instead */
+	@Deprecated
 	public NonAcceleratedOverlay(Context ctx) {
 		super(ctx);
 	}
 
-	public NonAcceleratedOverlay(ResourceProxy pResourceProxy) {
-		super(pResourceProxy);
+	public NonAcceleratedOverlay() {
+		super();
 	}
+
 
 	/**
 	 * Override if you really want access to the original (possibly) accelerated canvas.
@@ -93,7 +94,7 @@ public abstract class NonAcceleratedOverlay extends Overlay {
 					mBackingBitmap = Bitmap.createBitmap(c.getWidth(), c.getHeight(),
 							Config.ARGB_8888);
 				} catch (OutOfMemoryError e) {
-					logger.error("OutOfMemoryError creating backing bitmap in NonAcceleratedOverlay.");
+					Log.e(IMapView.LOGTAG,"OutOfMemoryError creating backing bitmap in NonAcceleratedOverlay.");
 					System.gc();
 					return;
 				}

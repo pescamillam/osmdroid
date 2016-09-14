@@ -4,12 +4,12 @@ package org.osmdroid.tileprovider;
 import java.util.HashMap;
 
 import org.osmdroid.tileprovider.constants.OpenStreetMapTileProviderConstants;
+import org.osmdroid.tileprovider.modules.IFilesystemCache;
 import org.osmdroid.tileprovider.modules.MapTileModuleProviderBase;
+import org.osmdroid.tileprovider.modules.TileWriter;
 import org.osmdroid.tileprovider.tilesource.ITileSource;
 import org.osmdroid.util.TileLooper;
 import org.osmdroid.views.Projection;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -19,7 +19,10 @@ import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.os.Handler;
+import android.util.Log;
+import org.osmdroid.api.IMapView;
 
 /**
  * This is an abstract class. The tile provider is responsible for:
@@ -33,14 +36,13 @@ import android.os.Handler;
  * @author Nicolas Gramlich
  *
  */
-public abstract class MapTileProviderBase implements IMapTileProviderCallback,
-		OpenStreetMapTileProviderConstants {
+public abstract class MapTileProviderBase implements IMapTileProviderCallback {
 
-	private static final Logger logger = LoggerFactory.getLogger(MapTileProviderBase.class);
 
 	protected final MapTileCache mTileCache;
 	protected Handler mTileRequestCompleteHandler;
 	protected boolean mUseDataConnection = true;
+	protected Drawable mTileNotFoundImage = null;
 
 	private ITileSource mTileSource;
 
@@ -55,7 +57,26 @@ public abstract class MapTileProviderBase implements IMapTileProviderCallback,
 	 */
 	public abstract Drawable getMapTile(MapTile pTile);
 
-	public abstract void detach();
+	/**
+	 * classes that extend MapTileProviderBase must call this method to prevent memory leaks.
+	 * Updated 5.2+
+	 */
+	public void detach(){
+		if (mTileNotFoundImage!=null){
+			// Only recycle if we are running on a project less than 2.3.3 Gingerbread.
+			if (Build.VERSION.SDK_INT < Build.VERSION_CODES.GINGERBREAD) {
+				if (mTileNotFoundImage instanceof BitmapDrawable) {
+					final Bitmap bitmap = ((BitmapDrawable) mTileNotFoundImage).getBitmap();
+					if (bitmap != null) {
+						bitmap.recycle();
+					}
+				}
+			}
+			if (mTileNotFoundImage instanceof ReusableBitmapDrawable)
+				BitmapPool.getInstance().returnDrawableToPool((ReusableBitmapDrawable) mTileNotFoundImage);
+		}
+		mTileNotFoundImage=null;
+	}
 
 	/**
 	 * Gets the minimum zoom level this tile provider can provide
@@ -110,6 +131,18 @@ public abstract class MapTileProviderBase implements IMapTileProviderCallback,
 	}
 
 	/**
+	 * Sets the "sorry we can't load a tile for this location" image. If it's null, the default view
+	 * is shown, which is the standard grey grid controlled by the tiles overlay
+	 * {@link org.osmdroid.views.overlay.TilesOverlay#setLoadingLineColor(int)} and
+	 * {@link org.osmdroid.views.overlay.TilesOverlay#setLoadingBackgroundColor(int)}
+	 * @since 5.2+
+	 * @param drawable
+     */
+	public void setTileLoadFailureImage(final Drawable drawable){
+		this.mTileNotFoundImage = drawable;
+	}
+
+	/**
 	 * Called by implementation class methods indicating that they have completed the request as
 	 * best it can. The tile is added to the cache, and a MAPTILE_SUCCESS_ID message is sent.
 	 *
@@ -128,8 +161,8 @@ public abstract class MapTileProviderBase implements IMapTileProviderCallback,
 			mTileRequestCompleteHandler.sendEmptyMessage(MapTile.MAPTILE_SUCCESS_ID);
 		}
 
-		if (DEBUG_TILE_PROVIDERS) {
-			logger.debug("MapTileProviderBase.mapTileRequestCompleted(): " + pState.getMapTile());
+		if (OpenStreetMapTileProviderConstants.DEBUG_TILE_PROVIDERS) {
+               Log.d(IMapView.LOGTAG,"MapTileProviderBase.mapTileRequestCompleted(): " + pState.getMapTile());
 		}
 	}
 
@@ -142,12 +175,19 @@ public abstract class MapTileProviderBase implements IMapTileProviderCallback,
 	 */
 	@Override
 	public void mapTileRequestFailed(final MapTileRequestState pState) {
-		if (mTileRequestCompleteHandler != null) {
-			mTileRequestCompleteHandler.sendEmptyMessage(MapTile.MAPTILE_FAIL_ID);
-		}
 
-		if (DEBUG_TILE_PROVIDERS) {
-			logger.debug("MapTileProviderBase.mapTileRequestFailed(): " + pState.getMapTile());
+		if (mTileNotFoundImage!=null) {
+			putTileIntoCache(pState, mTileNotFoundImage);
+			if (mTileRequestCompleteHandler != null) {
+				mTileRequestCompleteHandler.sendEmptyMessage(MapTile.MAPTILE_SUCCESS_ID);
+			}
+		} else {
+			if (mTileRequestCompleteHandler != null) {
+				mTileRequestCompleteHandler.sendEmptyMessage(MapTile.MAPTILE_FAIL_ID);
+			}
+		}
+		if (OpenStreetMapTileProviderConstants.DEBUG_TILE_PROVIDERS) {
+			Log.d(IMapView.LOGTAG,"MapTileProviderBase.mapTileRequestFailed(): " + pState.getMapTile());
 		}
 	}
 
@@ -171,8 +211,8 @@ public abstract class MapTileProviderBase implements IMapTileProviderCallback,
 			mTileRequestCompleteHandler.sendEmptyMessage(MapTile.MAPTILE_SUCCESS_ID);
 		}
 
-		if (DEBUG_TILE_PROVIDERS) {
-			logger.debug("MapTileProviderBase.mapTileRequestExpiredTile(): " + pState.getMapTile());
+		if (OpenStreetMapTileProviderConstants.DEBUG_TILE_PROVIDERS) {
+			Log.d(IMapView.LOGTAG,"MapTileProviderBase.mapTileRequestExpiredTile(): " + pState.getMapTile());
 		}
 	}
 
@@ -198,6 +238,9 @@ public abstract class MapTileProviderBase implements IMapTileProviderCallback,
 		mTileCache.ensureCapacity(pCapacity);
 	}
 
+	/**
+	 * purges the cache of all tiles (default is the in memory cache)
+	 */
 	public void clearTileCache() {
 		mTileCache.clear();
 	}
@@ -236,7 +279,7 @@ public abstract class MapTileProviderBase implements IMapTileProviderCallback,
 
 		final long startMs = System.currentTimeMillis();
 
-		logger.info("rescale tile cache from "+ pOldZoomLevel + " to " + pNewZoomLevel);
+		Log.i(IMapView.LOGTAG,"rescale tile cache from "+ pOldZoomLevel + " to " + pNewZoomLevel);
 
 		final int tileSize = getTileSource().getTileSizePixels();
 
@@ -252,7 +295,7 @@ public abstract class MapTileProviderBase implements IMapTileProviderCallback,
 		tileLooper.loop(null, pNewZoomLevel, tileSize, viewPort);
 
 		final long endMs = System.currentTimeMillis();
-		logger.info("Finished rescale in " + (endMs - startMs) + "ms");
+		Log.i(IMapView.LOGTAG,"Finished rescale in " + (endMs - startMs) + "ms");
 	}
 
 	private abstract class ScaleTileLooper extends TileLooper {
@@ -295,7 +338,7 @@ public abstract class MapTileProviderBase implements IMapTileProviderCallback,
 				try {
 					handleTile(pTileSizePx, pTile, pX, pY);
 				} catch(final OutOfMemoryError e) {
-					logger.error("OutOfMemoryError rescaling cache");
+					Log.e(IMapView.LOGTAG,"OutOfMemoryError rescaling cache");
 				}
 			}
 		}
@@ -354,8 +397,8 @@ public abstract class MapTileProviderBase implements IMapTileProviderCallback,
 						final Bitmap oldBitmap = bitmapDrawable.getBitmap();
 						canvas.drawBitmap(oldBitmap, mSrcRect, mDestRect, null);
 						success = true;
-						if (DEBUGMODE) {
-							logger.debug("Created scaled tile: " + pTile);
+						if (OpenStreetMapTileProviderConstants.DEBUGMODE) {
+							Log.d(IMapView.LOGTAG,"Created scaled tile: " + pTile);
 							mDebugPaint.setTextSize(40);
 							canvas.drawText("scaled", 50, 50, mDebugPaint);
 						}
@@ -419,13 +462,17 @@ public abstract class MapTileProviderBase implements IMapTileProviderCallback,
 
 			if (bitmap != null) {
 				mNewTiles.put(pTile, bitmap);
-				if (DEBUGMODE) {
-					logger.debug("Created scaled tile: " + pTile);
+				if (OpenStreetMapTileProviderConstants.DEBUGMODE) {
+					Log.d(IMapView.LOGTAG,"Created scaled tile: " + pTile);
 					mDebugPaint.setTextSize(40);
 					canvas.drawText("scaled", 50, 50, mDebugPaint);
 				}
 			}
 		}
 	}
+
+
+
+	public abstract IFilesystemCache getTileWriter();
 
 }

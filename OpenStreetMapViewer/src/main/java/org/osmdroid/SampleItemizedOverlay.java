@@ -1,6 +1,5 @@
 package org.osmdroid;
 
-import org.osmdroid.ResourceProxy.bitmap;
 import org.osmdroid.api.IMapView;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
@@ -22,11 +21,13 @@ public class SampleItemizedOverlay extends ItemizedOverlay<SampleOverlayItem> im
 
 	private boolean mFocusChanged = false;
 	private View mPopupView = null;
+	private Context mContext=null;
 
 	public SampleItemizedOverlay(Drawable pDefaultMarker, Context pContext) {
-		super(pDefaultMarker, new DefaultResourceProxyImpl(pContext));
+		super(pDefaultMarker);
 		populate();
 		setOnFocusChangeListener(this);
+		mContext=pContext;
 	}
 
 	@Override
@@ -39,7 +40,7 @@ public class SampleItemizedOverlay extends ItemizedOverlay<SampleOverlayItem> im
 		else
 			item = new SampleOverlayItem("NorthCentralPark", "North Central Park",
 					"North of Central Park in New York City", new GeoPoint(41.7820, -73.9660),
-					mResourceProxy.getDrawable(bitmap.person), HotspotPlace.CENTER);
+					mContext.getResources().getDrawable(R.drawable.person), HotspotPlace.CENTER);
 		return item;
 	}
 

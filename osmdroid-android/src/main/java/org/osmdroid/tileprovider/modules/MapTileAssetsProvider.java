@@ -11,11 +11,10 @@ import org.osmdroid.tileprovider.MapTileRequestState;
 import org.osmdroid.tileprovider.tilesource.BitmapTileSourceBase.LowMemoryException;
 import org.osmdroid.tileprovider.tilesource.ITileSource;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import android.content.res.AssetManager;
 import android.graphics.drawable.Drawable;
+import org.osmdroid.tileprovider.constants.OpenStreetMapTileProviderConstants;
 
 /**
  * Implements a file system cache and provides cached tiles from Assets. This
@@ -37,8 +36,6 @@ public class MapTileAssetsProvider extends MapTileFileStorageProviderBase {
 	// Constants
 	// ===========================================================
 
-	private static final Logger logger = LoggerFactory.getLogger(MapTileAssetsProvider.class);
-
 	// ===========================================================
 	// Fields
 	// ===========================================================
@@ -59,8 +56,8 @@ public class MapTileAssetsProvider extends MapTileFileStorageProviderBase {
 								 final AssetManager pAssets,
 								 final ITileSource pTileSource) {
 		this(pRegisterReceiver, pAssets, pTileSource,
-				NUMBER_OF_TILE_FILESYSTEM_THREADS,
-				TILE_FILESYSTEM_MAXIMUM_QUEUE_SIZE);
+				OpenStreetMapTileProviderConstants.getNumberOfTileDownloadThreads(),
+				OpenStreetMapTileProviderConstants.TILE_FILESYSTEM_MAXIMUM_QUEUE_SIZE);
 	}
 
 	public MapTileAssetsProvider(final IRegisterReceiver pRegisterReceiver,
@@ -103,7 +100,7 @@ public class MapTileAssetsProvider extends MapTileFileStorageProviderBase {
 	@Override
 	public int getMinimumZoomLevel() {
 		ITileSource tileSource = mTileSource.get();
-		return tileSource != null ? tileSource.getMinimumZoomLevel() : MINIMUM_ZOOMLEVEL;
+		return tileSource != null ? tileSource.getMinimumZoomLevel() : OpenStreetMapTileProviderConstants.MINIMUM_ZOOMLEVEL;
 	}
 
 	@Override
@@ -142,7 +139,8 @@ public class MapTileAssetsProvider extends MapTileFileStorageProviderBase {
 				InputStream is = mAssets.open(tileSource.getTileRelativeFilenameString(tile));
 				final Drawable drawable = tileSource.getDrawable(is);
 				if (drawable != null) {
-					ExpirableBitmapDrawable.setDrawableExpired(drawable);
+					//https://github.com/osmdroid/osmdroid/issues/272 why was this set to expired?
+					//ExpirableBitmapDrawable.setDrawableExpired(drawable);
 				}
 				return drawable;
 			} catch (IOException e) {

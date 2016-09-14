@@ -3,21 +3,24 @@ package org.osmdroid.tileprovider.modules;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.InputStream;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.osmdroid.tileprovider.MapTile;
 import org.osmdroid.tileprovider.tilesource.ITileSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
+import android.util.Log;
+import org.osmdroid.api.IMapView;
 
 public class MBTilesFileArchive implements IArchiveFile {
 
-	private static final Logger logger = LoggerFactory.getLogger(MBTilesFileArchive.class);
+	private SQLiteDatabase mDatabase;
 
-	private final SQLiteDatabase mDatabase;
+	public MBTilesFileArchive(){}
 
 	//	TABLE tiles (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB);
 	public final static String TABLE_TILES = "tiles";
@@ -36,6 +39,14 @@ public class MBTilesFileArchive implements IArchiveFile {
 						pFile.getAbsolutePath(),
 						null,
 						SQLiteDatabase.NO_LOCALIZED_COLLATORS | SQLiteDatabase.OPEN_READONLY));
+	}
+
+	@Override
+	public void init(File pFile) throws Exception {
+		mDatabase=SQLiteDatabase.openDatabase(
+				pFile.getAbsolutePath(),
+				null,
+				SQLiteDatabase.NO_LOCALIZED_COLLATORS | SQLiteDatabase.OPEN_READONLY);
 	}
 
 	@Override
@@ -60,10 +71,15 @@ public class MBTilesFileArchive implements IArchiveFile {
 				return ret;
 			}
 		} catch(final Throwable e) {
-			logger.warn("Error getting db stream: " + pTile, e);
+               Log.w(IMapView.LOGTAG,"Error getting db stream: " + pTile, e);
 		}
 
 		return null;
+	}
+
+	public Set<String> getTileSources(){
+		//the MBTiles spec doesn't store source information in it, so we can't return anything
+		return Collections.EMPTY_SET;
 	}
 
 	@Override

@@ -5,13 +5,14 @@
     <parent>
         <groupId>org.osmdroid</groupId>
         <artifactId>osmdroid-parent</artifactId>
-        <version>4.4-SNAPSHOT</version>
+        <version>5.3-SNAPSHOT</version>
     </parent>
 
     <artifactId>GoogleWrapperSample</artifactId>
     <packaging>apk</packaging>
 
-    <name>Google wrapper sample application</name>
+    <name>OSMdroid 3rd Party examples</name>
+    <description>Example application for 3rd party utilities, including the Google wrapper sample, Bing map sources, etc</description>
 
     <dependencies>
         <!-- Android included libraries -->
@@ -35,24 +36,33 @@
         </dependency>
 
         <dependency>
-            <groupId>commons-logging</groupId>
-            <artifactId>commons-logging</artifactId>
-        </dependency>
-
-        <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>osmdroid-android</artifactId>
             <version>${project.version}</version>
+            <type>aar</type>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>osmdroid-third-party</artifactId>
             <version>${project.version}</version>
+	    <type>aar</type>
+        </dependency>
+
+        <dependency>
+            <groupId>android.support</groupId>
+            <artifactId>compatibility-v4</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-android</artifactId>
+            <groupId>android.support</groupId>
+            <artifactId>compatibility-v7-appcompat</artifactId>
         </dependency>
+
+        <!-- test dependencies -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -60,6 +70,13 @@
             <plugin>
                 <groupId>com.simpligility.maven.plugins</groupId>
                 <artifactId>android-maven-plugin</artifactId>
+                <configuration>
+                    <sdk>
+                        <platform>${android.target}</platform>
+                    </sdk>
+                    <undeployBeforeDeploy>true</undeployBeforeDeploy>
+                </configuration>
+                <extensions>true</extensions>
             </plugin>
         </plugins>
     </build>

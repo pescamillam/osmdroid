@@ -14,28 +14,26 @@ package org.osmdroid.views.overlay;
  *
  * Change Log:
  * 		2010-10-08: Inclusion to osmdroid trunk
+ * 		2015-12-17: Allow for top, bottom, left or right placement by W.  Strickling
  *
- * Usage:
+ * Usage: 
  * <code>
  * MapView map = new MapView(...);
- * ScaleBarOverlay scaleBar = new ScaleBarOverlay(this.getBaseContext(), map);
- *
- * scaleBar.setImperial(); // Metric by default
+ * ScaleBarOverlay scaleBar = new ScaleBarOverlay(map); // Thiw is an important change of calling!
  *
  * map.getOverlays().add(scaleBar);
  * </code>
  *
  * To Do List:
- * 1. Allow for top, bottom, left or right placement.
+ * 1. Allow for top, bottom, left or right placement. // done in this changement
  * 2. Scale bar to precise displayed scale text after rounding.
  *
  */
 
 import java.lang.reflect.Field;
 
-import org.osmdroid.DefaultResourceProxyImpl;
-import org.osmdroid.ResourceProxy;
 import org.osmdroid.api.IGeoPoint;
+import org.osmdroid.library.R;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.util.constants.GeoConstants;
 import org.osmdroid.views.MapView;
@@ -72,24 +70,28 @@ public class ScaleBarOverlay extends Overlay implements GeoConstants {
 
 	boolean latitudeBar = true;
 	boolean longitudeBar = false;
+	
+	protected boolean alignBottom = false;
+	protected boolean alignRight  = false;
+
 
 	// Internal
 
-	private final Context context;
+	private Context context;
+	private MapView mMapView;
 
 	protected final Path barPath = new Path();
 	protected final Rect latitudeBarRect = new Rect();
 	protected final Rect longitudeBarRect = new Rect();
 
 	private int lastZoomLevel = -1;
-	private float lastLatitude = 0;
+	private double lastLatitude = 0.0;
 
 	public float xdpi;
 	public float ydpi;
 	public int screenWidth;
 	public int screenHeight;
 
-	private final ResourceProxy resourceProxy;
 	private Paint barPaint;
 	private Paint bgPaint;
 	private Paint textPaint;
@@ -102,14 +104,10 @@ public class ScaleBarOverlay extends Overlay implements GeoConstants {
 	// Constructors
 	// ===========================================================
 
-	public ScaleBarOverlay(final Context context) {
-		this(context, new DefaultResourceProxyImpl(context));
-	}
-
-	public ScaleBarOverlay(final Context context, final ResourceProxy pResourceProxy) {
-		super(pResourceProxy);
-		this.resourceProxy = pResourceProxy;
-		this.context = context;
+	public ScaleBarOverlay(final MapView mapView) {
+		super();
+		this.mMapView = mapView;
+		this.context = mapView.getContext();
 		final DisplayMetrics dm = context.getResources().getDisplayMetrics();
 
 		this.barPaint = new Paint();
@@ -256,9 +254,22 @@ public class ScaleBarOverlay extends Overlay implements GeoConstants {
 	 */
 	public void setCentred(final boolean centred) {
 		this.centred = centred;
+		alignBottom  = !centred;
+		alignRight   = !centred;
 		lastZoomLevel = -1; // Force redraw of scalebar
 	}
 
+	public void setAlignBottom(final boolean alignBottom) {
+		this.centred = false;
+		this.alignBottom  = alignBottom;
+		lastZoomLevel = -1; // Force redraw of scalebar
+	}
+
+	public void setAlignRight(final boolean alignRight) {
+		this.centred = false;
+		this.alignRight  = alignRight;
+		lastZoomLevel = -1; // Force redraw of scalebar
+	}
 	/**
 	 * Return's the paint used to draw the bar
 	 * 
@@ -363,16 +374,20 @@ public class ScaleBarOverlay extends Overlay implements GeoConstants {
 				return;
 			}
 
+			screenWidth	   = mapView.getWidth();
+			screenHeight   = mapView.getHeight();
 			final IGeoPoint center = projection.fromPixels(screenWidth / 2, screenHeight / 2, null);
 			if (zoomLevel != lastZoomLevel
-					|| (int) (center.getLatitudeE6() / 1E6) != (int) (lastLatitude / 1E6)) {
+					|| (int) center.getLatitude() != (int) lastLatitude) {
 				lastZoomLevel = zoomLevel;
-				lastLatitude = center.getLatitudeE6();
+				lastLatitude = center.getLatitude();
 				rebuildBarPath(projection);
 			}
 
 			int offsetX = (int) xOffset;
 			int offsetY = (int) yOffset;
+			if (alignBottom) offsetY *=-1;
+			if (alignRight ) offsetX *=-1;
 			if (centred && latitudeBar)
 				offsetX += -latitudeBarRect.width() / 2;
 			if (centred && longitudeBar)
@@ -437,7 +452,10 @@ public class ScaleBarOverlay extends Overlay implements GeoConstants {
 		final int xTextSpacing = (int) (sTextBoundsRect.height() / 5.0);
 
 		float x = xBarLengthPixels / 2 - sTextBoundsRect.width() / 2;
-		float y = sTextBoundsRect.height() + xTextSpacing;
+		if (alignRight)  x+= screenWidth -xBarLengthPixels;
+		float y; 
+		if (alignBottom) { y = screenHeight   -xTextSpacing*2; }
+		else y = sTextBoundsRect.height() + xTextSpacing;
 		canvas.drawText(xMsg, x, y, textPaint);
 	}
 
@@ -466,15 +484,18 @@ public class ScaleBarOverlay extends Overlay implements GeoConstants {
 		textPaint.getTextBounds(yMsg, 0, yMsg.length(), sTextBoundsRect);
 		final int yTextSpacing = (int) (sTextBoundsRect.height() / 5.0);
 
-		final float x = sTextBoundsRect.height() + yTextSpacing;
-		final float y = yBarLengthPixels / 2 + sTextBoundsRect.width() / 2;
+		float x; 
+		if (alignRight)  {x = screenWidth  -yTextSpacing*2;}
+		else x = sTextBoundsRect.height() + yTextSpacing;
+		float y = yBarLengthPixels / 2 + sTextBoundsRect.width() / 2;
+		if (alignBottom) y+= screenHeight -yBarLengthPixels;
 		canvas.save();
 		canvas.rotate(-90, x, y);
 		canvas.drawText(yMsg, x, y, textPaint);
 		canvas.restore();
 	}
 
-	private void rebuildBarPath(final Projection projection) {
+	protected void rebuildBarPath(final Projection projection) {   //** modified to protected
 		// We want the scale bar to be as long as the closest round-number miles/kilometers
 		// to 1-inch at the latitude at the current center of the screen.
 
@@ -512,39 +533,60 @@ public class ScaleBarOverlay extends Overlay implements GeoConstants {
 		final String xMsg = scaleBarLengthText((int) xMetersAdjusted);
 		final Rect xTextRect = new Rect();
 		textPaint.getTextBounds(xMsg, 0, xMsg.length(), xTextRect);
-		final int xTextSpacing = (int) (xTextRect.height() / 5.0);
+		int xTextSpacing = (int) (xTextRect.height() / 5.0);           
 
 		// create text
 		final String yMsg = scaleBarLengthText((int) yMetersAdjusted);
 		final Rect yTextRect = new Rect();
 		textPaint.getTextBounds(yMsg, 0, yMsg.length(), yTextRect);
-		final int yTextSpacing = (int) (yTextRect.height() / 5.0);
+		int yTextSpacing = (int) (yTextRect.height() / 5.0);
+		int xTextHeight  = xTextRect.height();
+		int yTextHeight  = yTextRect.height();
 
 		barPath.rewind();
-
+		
+		//** alignBottom ad-ons
+		int barOriginX = 0;
+		int barOriginY = 0;
+		int barToX     = xBarLengthPixels;
+		int barToY	   = yBarLengthPixels;
+		if (alignBottom) {
+			xTextSpacing *= -1;
+			xTextHeight  *= -1;
+			barOriginY   = mMapView.getHeight();
+			barToY       = barOriginY -yBarLengthPixels;
+		}
+				
+		if (alignRight) {
+			yTextSpacing *= -1;
+			yTextHeight  *= -1;		
+			barOriginX   = mMapView.getWidth();
+			barToX       = barOriginX -xBarLengthPixels;    
+		}
+		
 		if (latitudeBar) {
 			// draw latitude bar
-			barPath.moveTo(xBarLengthPixels, xTextRect.height() + xTextSpacing * 2);
-			barPath.lineTo(xBarLengthPixels, 0);
-			barPath.lineTo(0, 0);
+			barPath.moveTo(barToX, barOriginY +xTextHeight + xTextSpacing * 2);
+			barPath.lineTo(barToX, barOriginY);
+			barPath.lineTo(barOriginX, barOriginY);
 
 			if (!longitudeBar) {
-				barPath.lineTo(0, xTextRect.height() + xTextSpacing * 2);
+				barPath.lineTo(barOriginX,  barOriginY +xTextHeight + xTextSpacing * 2);
 			}
-			latitudeBarRect.set(0, 0, xBarLengthPixels, xTextRect.height() + xTextSpacing * 2);
+			latitudeBarRect.set(barOriginX, barOriginY, barToX, barOriginY +xTextHeight + xTextSpacing * 2);
 		}
 
 		if (longitudeBar) {
 			// draw longitude bar
 			if (!latitudeBar) {
-				barPath.moveTo(yTextRect.height() + yTextSpacing * 2, 0);
-				barPath.lineTo(0, 0);
+				barPath.moveTo(barOriginX +yTextHeight + yTextSpacing * 2, barOriginY);
+				barPath.lineTo(barOriginX, barOriginY);
 			}
 
-			barPath.lineTo(0, yBarLengthPixels);
-			barPath.lineTo(yTextRect.height() + yTextSpacing * 2, yBarLengthPixels);
+			barPath.lineTo(barOriginX, barToY);
+			barPath.lineTo(barOriginX +yTextHeight + yTextSpacing * 2, barToY);
 
-			longitudeBarRect.set(0, 0, yTextRect.height() + yTextSpacing * 2, yBarLengthPixels);
+			longitudeBarRect.set(barOriginX, barOriginY, barOriginX +yTextHeight + yTextSpacing * 2, barToY);
 		}
 	}
 
@@ -607,38 +649,48 @@ public class ScaleBarOverlay extends Overlay implements GeoConstants {
 		default:
 		case metric:
 			if (meters >= 1000 * 5) {
-				return resourceProxy.getString(ResourceProxy.string.format_distance_kilometers,
-						(meters / 1000));
+				return context.getResources().getString(R.string.format_distance_kilometers,(meters / 1000));
 			} else if (meters >= 1000 / 5) {
-				return resourceProxy.getString(ResourceProxy.string.format_distance_kilometers,
+				return context.getResources().getString(R.string.format_distance_kilometers,
 						(int) (meters / 100.0) / 10.0);
 			} else {
-				return resourceProxy.getString(ResourceProxy.string.format_distance_meters, meters);
+				return context.getResources().getString(R.string.format_distance_meters, meters);
 			}
 		case imperial:
 			if (meters >= METERS_PER_STATUTE_MILE * 5) {
-				return resourceProxy.getString(ResourceProxy.string.format_distance_miles,
+				return context.getResources().getString(R.string.format_distance_miles,
 						(int) (meters / METERS_PER_STATUTE_MILE));
 
 			} else if (meters >= METERS_PER_STATUTE_MILE / 5) {
-				return resourceProxy.getString(ResourceProxy.string.format_distance_miles,
+				return context.getResources().getString(R.string.format_distance_miles,
 						((int) (meters / (METERS_PER_STATUTE_MILE / 10.0))) / 10.0);
 			} else {
-				return resourceProxy.getString(ResourceProxy.string.format_distance_feet,
+				return context.getResources().getString(R.string.format_distance_feet,
 						(int) (meters * FEET_PER_METER));
 			}
 		case nautical:
 			if (meters >= METERS_PER_NAUTICAL_MILE * 5) {
-				return resourceProxy.getString(ResourceProxy.string.format_distance_nautical_miles,
+				return context.getResources().getString(R.string.format_distance_nautical_miles,
 						((int) (meters / METERS_PER_NAUTICAL_MILE)));
 			} else if (meters >= METERS_PER_NAUTICAL_MILE / 5) {
-				return resourceProxy.getString(ResourceProxy.string.format_distance_nautical_miles,
+				return context.getResources().getString(R.string.format_distance_nautical_miles,
 						(((int) (meters / (METERS_PER_NAUTICAL_MILE / 10.0))) / 10.0));
 			} else {
-				return resourceProxy.getString(ResourceProxy.string.format_distance_feet,
+				return context.getResources().getString(R.string.format_distance_feet,
 						((int) (meters * FEET_PER_METER)));
 			}
 		}
 	}
 
+	@Override
+	public void onDetach(MapView mapView){
+		this.context=null;
+		this.mMapView=null;
+		barPaint=null;
+		bgPaint=null;
+		textPaint=null;
+	}
+
 }
+
+

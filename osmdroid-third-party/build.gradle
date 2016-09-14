@@ -1,4 +1,22 @@
-apply plugin: 'java'
-sourceSets {
-    main.java.srcDirs = ['src\main\java','src\main\resources','src\test\java','src\test\resources']
+description = 'osmdroid 3rd party libraries and examples. May use non ASF licensed libraries as dependencies'
+apply plugin: 'com.android.library'
+apply from: "${rootDir}/gradle/android-support.gradle"
+android {
+    compileSdkVersion "Google Inc.:Google APIs:23"
+    buildToolsVersion "23.0.3"
+    defaultConfig {
+        minSdkVersion 9
+    }
+    lintOptions {
+        abortOnError false
+    }
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.8.2'
+    compile project(':osmdroid-android')
+    //compile(group: 'org.apache.james', name: 'apache-mime4j', version: '0.6') {}
+
+    compile 'com.google.android.gms:play-services:8.+'
+    compile 'com.google.android.gms:play-services-maps:8.+'
 }

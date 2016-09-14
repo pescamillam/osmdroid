@@ -9,7 +9,7 @@
 
     <groupId>org.osmdroid</groupId>
     <artifactId>osmdroid-parent</artifactId>
-    <version>4.4-SNAPSHOT</version>
+    <version>5.3-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>OSMdroid parent</name>
@@ -50,6 +50,8 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <android.target>23</android.target>
+        <forge.version>0.6.0</forge.version>
     </properties>
 
     <dependencyManagement>
@@ -58,42 +60,47 @@
             <dependency>
                 <groupId>android</groupId>
                 <artifactId>android</artifactId>
-                <version>4.4.2_r4</version>
+                <version>[(6,)</version>
                 <scope>provided</scope>
             </dependency>
             <dependency>
                 <groupId>android.support</groupId>
                 <artifactId>compatibility-v4</artifactId>
-                <version>22.2.0</version>
+                <version>[23,)</version>
+            </dependency>
+            <dependency>
+                <groupId>android.support</groupId>
+                <artifactId>compatibility-v7-appcompat</artifactId>
+                <version>[23,)</version>
+            </dependency>
+            <dependency>
+                <groupId>android.support</groupId>
+                <artifactId>compatibility-v7-appcompat</artifactId>
+                <version>[23,)</version>
+                <type>apklib</type>
             </dependency>
             <dependency>
                 <groupId>com.google.android.maps</groupId>
                 <artifactId>maps</artifactId>
-                <version>21_r1</version>
+                <version>[23,)</version>
                 <scope>provided</scope>
             </dependency>
             <dependency>
                 <groupId>com.google.android.gms</groupId>
                 <artifactId>google-play-services</artifactId>
                 <type>apklib</type>
-                <version>25.0.0</version>
+                <version>[27,)</version>
             </dependency>
             <dependency>
                 <groupId>com.google.android.gms</groupId>
                 <artifactId>google-play-services</artifactId>
                 <type>jar</type>
-                <version>25.0.0</version>
-            </dependency>
-            <dependency>
-                <groupId>commons-logging</groupId>
-                <artifactId>commons-logging</artifactId>
-                <version>1.1.1</version>
-                <scope>provided</scope>
+                <version>[27,)</version>
             </dependency>
             <dependency>
                 <groupId>org.json</groupId>
                 <artifactId>json</artifactId>
-                <version>20070829</version>
+                <version>20080701</version>
                 <scope>provided</scope>
             </dependency>
             <dependency>
@@ -108,27 +115,18 @@
                 <version>0.6</version>
                 <scope>provided</scope>
             </dependency>
-
-            <!--  -->
             <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-api</artifactId>
-                <version>1.6.1</version>
-                <scope>provided</scope>
+                <groupId>com.squareup.leakcanary</groupId>
+                <artifactId>leakcanary-android</artifactId>
+                <version>1.4-beta2</version>
             </dependency>
             <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-android</artifactId>
-                <version>1.6.1-RC1</version>
+                <groupId>ch.acra</groupId>
+                <artifactId>acra</artifactId>
+                <version>4.7.0</version>
             </dependency>
 
             <!-- test dependencies -->
-            <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-log4j12</artifactId>
-                <version>1.6.1</version>
-                <scope>test</scope>
-            </dependency>
             <dependency>
                 <groupId>junit</groupId>
                 <artifactId>junit</artifactId>
@@ -144,16 +142,16 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>2.3.2</version>
+                    <version>3.1</version>
                     <configuration>
-                        <source>1.6</source>
-                        <target>1.6</target>
+                        <source>1.7</source>
+                        <target>1.7</target>
                     </configuration>
                 </plugin>
                 <plugin>
                     <groupId>com.simpligility.maven.plugins</groupId>
                     <artifactId>android-maven-plugin</artifactId>
-                    <version>4.2.1</version>
+                    <version>4.3.0</version>
                     <configuration>
                         <sdk>
                             <platform>19</platform>
@@ -205,16 +203,105 @@
         </pluginManagement>
     </build>
 
-    <modules>
-        <module>osmdroid-android</module>
-        <module>osmdroid-android-it</module>
-        <module>osmdroid-third-party</module>
-        <module>OpenStreetMapViewer</module>
-        <module>GoogleWrapperSample</module>
-        <module>OSMMapTilePackager</module>
-    </modules>
+   
 
     <profiles>
+	 <profile>
+	      <id>core</id>
+	      <!-- only includes the core modules, google libraries are excluded -->
+	      <modules>
+		    <module>osmdroid-android</module>
+		    <module>OpenStreetMapViewer</module>
+		    <module>OSMMapTilePackager</module>
+		    <module>osmdroid-android-it</module>
+	      </modules>
+	 </profile>
+	 <profile>
+	      <id>default</id>
+	      <activation>
+		   <activeByDefault>true</activeByDefault>
+	      </activation>
+	       <modules>
+		    <module>osmdroid-android</module>
+		    <module>osmdroid-third-party</module>
+		    <module>OpenStreetMapViewer</module>
+		    <module>osmdroid-mapsforge</module>
+		    <module>osmdroid-forge-app</module>
+		    <module>GoogleWrapperSample</module>
+		    <module>OSMMapTilePackager</module>
+		    <module>osmdroid-android-it</module>
+		</modules>
+	 </profile>
+	 <profile>
+            <!-- dist is used for CI builds, does everything except signatures -->
+            <id>dist</id>
+	      <modules>
+		    <module>osmdroid-android</module>
+		    <module>osmdroid-third-party</module>
+		    <module>OpenStreetMapViewer</module>
+		    <module>GoogleWrapperSample</module>
+		    <module>osmdroid-mapsforge</module>
+		    <module>osmdroid-forge-app</module>
+		    <module>OSMMapTilePackager</module>
+		    <module>osmdroid-android-it</module>
+		    <module>osmdroid-dist</module>
+		</modules>
+            <build>
+                <plugins>
+
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                   
+                    <plugin>
+                        <groupId>com.simpligility.maven.plugins</groupId>
+                        <artifactId>android-maven-plugin</artifactId>
+                        <inherited>true</inherited>
+                        <executions>
+                          <execution>
+                            <id>alignApk</id>
+                            <phase>install</phase>
+                            <goals>
+                              <goal>zipalign</goal>
+                            </goals>
+                          </execution>
+                        </executions>
+                        <configuration>
+                            <zipalign>
+                                <verbose>true</verbose>
+                                <skip>false</skip>
+                            </zipalign>
+                        </configuration>
+                    </plugin>
+
+                </plugins>
+            </build>
+        </profile>
+	
         <profile>
             <!--  this profile is activated when using 'mvn release:perform' -->
             <!--  it signs artifacts before staging to Sonatype -->
@@ -225,6 +312,17 @@
                     <value>true</value>
                 </property>
             </activation>
+              <modules>
+                <module>osmdroid-android</module>
+                <module>osmdroid-third-party</module>
+                <module>OpenStreetMapViewer</module>
+                <module>GoogleWrapperSample</module>
+                <module>osmdroid-mapsforge</module>
+                <module>osmdroid-forge-app</module>
+                <module>OSMMapTilePackager</module>
+                <module>osmdroid-android-it</module>
+                <module>osmdroid-dist</module>
+            </modules>
             <build>
                 <plugins>
 

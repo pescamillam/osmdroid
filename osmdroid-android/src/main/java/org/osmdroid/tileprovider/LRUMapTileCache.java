@@ -2,23 +2,20 @@ package org.osmdroid.tileprovider;
 
 import java.util.LinkedHashMap;
 
-import org.osmdroid.tileprovider.constants.OpenStreetMapTileProviderConstants;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
+import android.util.Log;
+import org.osmdroid.api.IMapView;
+import org.osmdroid.tileprovider.constants.OpenStreetMapTileProviderConstants;
 
-public class LRUMapTileCache extends LinkedHashMap<MapTile, Drawable>
-	implements OpenStreetMapTileProviderConstants {
+public class LRUMapTileCache extends LinkedHashMap<MapTile, Drawable> {
 
 	public interface TileRemovedListener {
 		void onTileRemoved(MapTile mapTile);
 	}
-
-	private static final Logger logger = LoggerFactory.getLogger(LRUMapTileCache.class);
 
 	private static final long serialVersionUID = -541142277575493335L;
 
@@ -32,7 +29,7 @@ public class LRUMapTileCache extends LinkedHashMap<MapTile, Drawable>
 
 	public void ensureCapacity(final int aCapacity) {
 		if (aCapacity > mCapacity) {
-			logger.info("Tile cache increased from " + mCapacity + " to " + aCapacity);
+               Log.i(IMapView.LOGTAG, "Tile cache increased from " + mCapacity + " to " + aCapacity);
 			mCapacity = aCapacity;
 		}
 	}
@@ -71,8 +68,8 @@ public class LRUMapTileCache extends LinkedHashMap<MapTile, Drawable>
 	protected boolean removeEldestEntry(final java.util.Map.Entry<MapTile, Drawable> aEldest) {
 		if (size() > mCapacity) {
 			final MapTile eldest = aEldest.getKey();
-			if (DEBUGMODE) {
-				logger.debug("Remove old tile: " + eldest);
+			if (OpenStreetMapTileProviderConstants.DEBUGMODE) {
+                    Log.d(IMapView.LOGTAG,"LRU Remove old tile: " + eldest);
 			}
 			remove(eldest);
 			// don't return true because we've already removed it

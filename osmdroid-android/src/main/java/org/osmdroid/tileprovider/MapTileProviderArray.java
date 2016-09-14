@@ -5,12 +5,15 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
+import org.osmdroid.tileprovider.modules.IFilesystemCache;
 import org.osmdroid.tileprovider.modules.MapTileModuleProviderBase;
+import org.osmdroid.tileprovider.modules.TileWriter;
 import org.osmdroid.tileprovider.tilesource.ITileSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import android.graphics.drawable.Drawable;
+import android.util.Log;
+import org.osmdroid.api.IMapView;
+import org.osmdroid.tileprovider.constants.OpenStreetMapTileProviderConstants;
 
 /**
  * This top-level tile provider allows a consumer to provide an array of modular asynchronous tile
@@ -31,9 +34,7 @@ import android.graphics.drawable.Drawable;
 public class MapTileProviderArray extends MapTileProviderBase {
 
 	protected final HashMap<MapTile, MapTileRequestState> mWorking;
-
-	private static final Logger logger = LoggerFactory.getLogger(MapTileProviderArray.class);
-
+	protected IRegisterReceiver mRegisterReceiver=null;
 	protected final List<MapTileModuleProviderBase> mTileProviderList;
 
 	/**
@@ -61,22 +62,31 @@ public class MapTileProviderArray extends MapTileProviderBase {
 		super(pTileSource);
 
 		mWorking = new HashMap<MapTile, MapTileRequestState>();
-
+		mRegisterReceiver=aRegisterReceiver;
 		mTileProviderList = new ArrayList<MapTileModuleProviderBase>();
 		Collections.addAll(mTileProviderList, pTileProviderArray);
 	}
 
 	@Override
 	public void detach() {
+
 		synchronized (mTileProviderList) {
 			for (final MapTileModuleProviderBase tileProvider : mTileProviderList) {
 				tileProvider.detach();
+
 			}
 		}
 
+		mTileCache.clear();
 		synchronized (mWorking) {
 			mWorking.clear();
 		}
+		clearTileCache();
+		if (mRegisterReceiver!=null) {
+			mRegisterReceiver.destroy();
+			mRegisterReceiver = null;
+		}
+		super.detach();
 	}
 
 	@Override
@@ -91,8 +101,8 @@ public class MapTileProviderArray extends MapTileProviderBase {
 			}
 
 			if (!alreadyInProgress) {
-				if (DEBUG_TILE_PROVIDERS) {
-					logger.debug("MapTileProviderArray.getMapTile() requested but not in cache, trying from async providers: "
+				if (OpenStreetMapTileProviderConstants.DEBUG_TILE_PROVIDERS) {
+                         Log.d(IMapView.LOGTAG,"MapTileProviderArray.getMapTile() requested but not in cache, trying from async providers: "
 							+ pTile);
 				}
 
@@ -129,7 +139,10 @@ public class MapTileProviderArray extends MapTileProviderBase {
 	public void mapTileRequestCompleted(final MapTileRequestState aState, final Drawable aDrawable) {
 		synchronized (mWorking) {
 			mWorking.remove(aState.getMapTile());
+			// https://github.com/osmdroid/osmdroid/issues/272
+			mTileCache.putTile(aState.getMapTile(), aDrawable);
 		}
+
 		super.mapTileRequestCompleted(aState, aDrawable);
 	}
 
@@ -161,6 +174,11 @@ public class MapTileProviderArray extends MapTileProviderBase {
 				mWorking.remove(aState.getMapTile());
 			}
 		}
+	}
+
+	@Override
+	public IFilesystemCache getTileWriter() {
+		return null;
 	}
 
 	/**
@@ -211,7 +229,7 @@ public class MapTileProviderArray extends MapTileProviderBase {
 
 	@Override
 	public int getMaximumZoomLevel() {
-		int result = MINIMUM_ZOOMLEVEL;
+		int result = OpenStreetMapTileProviderConstants.MINIMUM_ZOOMLEVEL;
 		synchronized (mTileProviderList) {
 			for (final MapTileModuleProviderBase tileProvider : mTileProviderList) {
 				if (tileProvider.getMaximumZoomLevel() > result) {

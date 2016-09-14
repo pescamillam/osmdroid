@@ -7,24 +7,21 @@ import java.util.Locale;
 
 import microsoft.mappoint.TileSystem;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.osmdroid.ResourceProxy;
-import org.osmdroid.http.HttpClientFactory;
+
 import org.osmdroid.tileprovider.MapTile;
+import org.osmdroid.tileprovider.constants.OpenStreetMapTileProviderConstants;
 import org.osmdroid.tileprovider.tilesource.IStyledTileSource;
 import org.osmdroid.tileprovider.tilesource.QuadTreeTileSource;
 import org.osmdroid.tileprovider.tilesource.bing.imagerymetadata.ImageryMetaData;
 import org.osmdroid.tileprovider.tilesource.bing.imagerymetadata.ImageryMetaDataResource;
 import org.osmdroid.tileprovider.util.ManifestUtil;
 import org.osmdroid.tileprovider.util.StreamUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import android.content.Context;
+import android.util.Log;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import org.osmdroid.thirdparty.Constants;
 
 /**
  * BingMap tile source used with OSMDroid<br>
@@ -38,8 +35,6 @@ import android.content.Context;
  * for details on the Bing API.
  */
 public class BingMapTileSource extends QuadTreeTileSource implements IStyledTileSource<String> {
-
-	private static final Logger logger = LoggerFactory.getLogger(BingMapTileSource.class);
 
 	/** the meta data key in the manifest */
 	private static final String BING_KEY = "BING_KEY";
@@ -81,7 +76,7 @@ public class BingMapTileSource extends QuadTreeTileSource implements IStyledTile
 	 * @param aLocale	The language used with BingMap REST service to retrieve tiles.<br> If null, the system default locale is used.
 	 */
 	public BingMapTileSource(final String aLocale) {
-		super("BingMap", ResourceProxy.string.bing, -1, -1, -1, FILENAME_ENDING, null);
+		super("BingMaps",  0, 19, 256, FILENAME_ENDING, null);
 		mLocale = aLocale;
 		if(mLocale==null) {
 			mLocale=Locale.getDefault().getLanguage()+"-"+Locale.getDefault().getCountry();
@@ -100,6 +95,10 @@ public class BingMapTileSource extends QuadTreeTileSource implements IStyledTile
 
 	public static String getBingKey() {
 		return mBingMapKey;
+	}
+
+	public static void setBingKey(String key) {
+		mBingMapKey=key;
 	}
 
 	/*-------------- overrides OnlineTileSourceBase ---------------------*/
@@ -180,7 +179,16 @@ public class BingMapTileSource extends QuadTreeTileSource implements IStyledTile
 		return mStyle;
 	}
 
-	private ImageryMetaDataResource initMetaData() {
+	/**
+	 * Fire this after you've set up your prefered tile styles and locale
+	 * if you forget, it should fire on the first request for tiles.
+	 *
+	 * See issue <a href="https://github.com/osmdroid/osmdroid/issues/383">https://github.com/osmdroid/osmdroid/issues/383</a>
+	 * It was made public since v5.3
+	 * @since 5.3
+	 * @return
+     */
+	public ImageryMetaDataResource initMetaData() {
 		if (!mImageryData.m_isInitialised) {
 			synchronized (this) {
 				if (!mImageryData.m_isInitialised) {
@@ -201,22 +209,24 @@ public class BingMapTileSource extends QuadTreeTileSource implements IStyledTile
 	 */
 	private ImageryMetaDataResource getMetaData()
 	{
-		logger.trace("getMetaData");
+		Log.d(Constants.LOGTAG,"getMetaData");
 
-		final HttpClient client = HttpClientFactory.createHttpClient();
-		final HttpUriRequest head = new HttpGet(String.format(BASE_URL_PATTERN, mStyle, mBingMapKey));
-		logger.debug("make request "+head.getURI().toString());
+		
+		          
+		
+ 		HttpURLConnection client=null;
 		try {
-			final HttpResponse response = client.execute(head);
+			client = (HttpURLConnection)(new URL(String.format(BASE_URL_PATTERN, mStyle, mBingMapKey)).openConnection());
+			Log.d(Constants.LOGTAG,"make request "+client.getURL().toString().toString());
+			client.setRequestProperty(OpenStreetMapTileProviderConstants.USER_AGENT, OpenStreetMapTileProviderConstants.getUserAgentValue());
+			client.connect();
 
-			final HttpEntity entity = response.getEntity();
-
-			if (entity == null) {
-				logger.error("Cannot get response for url "+head.getURI().toString());
+			if (client.getResponseCode()!= 200) {
+				Log.e(Constants.LOGTAG,"Cannot get response for url "+client.getURL().toString() + " " + client.getResponseMessage());
 				return null;
 			}
 
-			final InputStream in = entity.getContent();
+			final InputStream in = client.getInputStream();
 			final ByteArrayOutputStream dataStream = new ByteArrayOutputStream();
 			final BufferedOutputStream out = new BufferedOutputStream(dataStream, StreamUtils.IO_BUFFER_SIZE);
 			StreamUtils.copy(in, out);
@@ -225,14 +235,15 @@ public class BingMapTileSource extends QuadTreeTileSource implements IStyledTile
 			return ImageryMetaData.getInstanceFromJSON(dataStream.toString());
 
 		} catch(final Exception e) {
-			logger.error("Error getting imagery meta data", e);
+			Log.e(Constants.LOGTAG,"Error getting imagery meta data", e);
 		} finally {
 			try {
-				client.getConnectionManager().shutdown();
-			} catch(UnsupportedOperationException e) {
-				// OkApacheClient doesn't support this
+				if (client!=null)
+					client.disconnect();
+			} catch(Exception e) {
+
 			}
-			logger.trace("end getMetaData");
+			Log.d(Constants.LOGTAG,"end getMetaData");
 		}
 		return null;
 	}
@@ -243,7 +254,7 @@ public class BingMapTileSource extends QuadTreeTileSource implements IStyledTile
 	 */
 	protected void updateBaseUrl()
 	{
-		logger.trace("updateBaseUrl");
+		Log.d(Constants.LOGTAG,"updateBaseUrl");
 		final String subDomain = mImageryData.getSubDomain();
 		final int idx = mImageryData.m_imageUrl.lastIndexOf("/");
 		if(idx>0) {
@@ -258,8 +269,8 @@ public class BingMapTileSource extends QuadTreeTileSource implements IStyledTile
 			mBaseUrl = String.format(mBaseUrl, subDomain);
 			mUrl = String.format(mUrl, subDomain,"%s",mLocale);
 		}
-		logger.debug("updated url = "+mUrl);
-		logger.trace("end updateBaseUrl");
+		Log.d(Constants.LOGTAG,"updated url = "+mUrl);
+		Log.d(Constants.LOGTAG,"end updateBaseUrl");
 	}
 
 }

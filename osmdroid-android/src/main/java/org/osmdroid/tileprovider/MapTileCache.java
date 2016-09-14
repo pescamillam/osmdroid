@@ -6,11 +6,11 @@ import org.osmdroid.tileprovider.constants.OpenStreetMapTileProviderConstants;
 import android.graphics.drawable.Drawable;
 
 /**
- * 
+ * In memory cache of tiles
  * @author Nicolas Gramlich
  * 
  */
-public class MapTileCache implements OpenStreetMapTileProviderConstants {
+public class MapTileCache {
 	// ===========================================================
 	// Constants
 	// ===========================================================
@@ -27,7 +27,7 @@ public class MapTileCache implements OpenStreetMapTileProviderConstants {
 	// ===========================================================
 
 	public MapTileCache() {
-		this(CACHE_MAPTILECOUNT_DEFAULT);
+		this(OpenStreetMapTileProviderConstants.CACHE_MAPTILECOUNT_DEFAULT);
 	}
 
 	/**

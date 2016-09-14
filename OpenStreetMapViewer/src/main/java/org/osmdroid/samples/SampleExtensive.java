@@ -1,18 +1,7 @@
 package org.osmdroid.samples;
 
-import org.osmdroid.R;
-import org.osmdroid.ResourceProxy;
-import org.osmdroid.ResourceProxyImpl;
-import org.osmdroid.api.IMapController;
-import org.osmdroid.constants.OpenStreetMapConstants;
-import org.osmdroid.tileprovider.tilesource.ITileSource;
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
-import org.osmdroid.views.MapView;
-import org.osmdroid.views.overlay.MinimapOverlay;
-import org.osmdroid.views.overlay.ScaleBarOverlay;
-import org.osmdroid.views.overlay.SimpleLocationOverlay;
-
 import android.app.Activity;
+import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -22,6 +11,16 @@ import android.view.View.OnClickListener;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.RelativeLayout.LayoutParams;
+
+import org.osmdroid.api.IMapController;
+import org.osmdroid.constants.OpenStreetMapConstants;
+import org.osmdroid.tileprovider.tilesource.ITileSource;
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
+import org.osmdroid.util.GeoPoint;
+import org.osmdroid.views.MapView;
+import org.osmdroid.views.overlay.MinimapOverlay;
+import org.osmdroid.views.overlay.ScaleBarOverlay;
+import org.osmdroid.views.overlay.mylocation.SimpleLocationOverlay;
 
 /**
  *
@@ -43,10 +42,9 @@ public class SampleExtensive extends Activity implements OpenStreetMapConstants 
 	// Fields
 	// ===========================================================
 
-	private MapView mOsmv;
+	private MapView mMapView;
 	private IMapController mOsmvController;
 	private SimpleLocationOverlay mMyLocationOverlay;
-	private ResourceProxy mResourceProxy;
 	private ScaleBarOverlay mScaleBarOverlay;
 	private MinimapOverlay mMiniMapOverlay;
 
@@ -59,19 +57,18 @@ public class SampleExtensive extends Activity implements OpenStreetMapConstants 
 	public void onCreate(final Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 
-		mResourceProxy = new ResourceProxyImpl(getApplicationContext());
-
 		final RelativeLayout rl = new RelativeLayout(this);
 
-		this.mOsmv = new MapView(this);
-		this.mOsmvController = this.mOsmv.getController();
-		rl.addView(this.mOsmv, new RelativeLayout.LayoutParams(LayoutParams.FILL_PARENT,
+		this.mMapView = new MapView(this);
+		this.mMapView.setTilesScaledToDpi(true);
+		this.mOsmvController = this.mMapView.getController();
+		rl.addView(this.mMapView, new RelativeLayout.LayoutParams(LayoutParams.FILL_PARENT,
 				LayoutParams.FILL_PARENT));
 
 		/* Scale Bar Overlay */
 		{
-			this.mScaleBarOverlay = new ScaleBarOverlay(this, mResourceProxy);
-			this.mOsmv.getOverlays().add(mScaleBarOverlay);
+			this.mScaleBarOverlay = new ScaleBarOverlay(mMapView);
+			this.mMapView.getOverlays().add(mScaleBarOverlay);
 			// Scale bar tries to draw as 1-inch, so to put it in the top center, set x offset to
 			// half screen width, minus half an inch.
 			this.mScaleBarOverlay.setScaleBarOffset(
@@ -85,15 +82,15 @@ public class SampleExtensive extends Activity implements OpenStreetMapConstants 
 			 * Create a static Overlay showing a single location. (Gets updated in
 			 * onLocationChanged(Location loc)!
 			 */
-			this.mMyLocationOverlay = new SimpleLocationOverlay(this, mResourceProxy);
-			this.mOsmv.getOverlays().add(mMyLocationOverlay);
+			this.mMyLocationOverlay = new SimpleLocationOverlay(((BitmapDrawable)getResources().getDrawable(org.osmdroid.library.R.drawable.person)).getBitmap());
+			this.mMapView.getOverlays().add(mMyLocationOverlay);
 		}
 
 		/* ZoomControls */
 		{
 			/* Create a ImageView with a zoomIn-Icon. */
 			final ImageView ivZoomIn = new ImageView(this);
-			ivZoomIn.setImageResource(R.drawable.zoom_in);
+			ivZoomIn.setImageResource(org.osmdroid.R.drawable.zoom_in);
 			/* Create RelativeLayoutParams, that position it in the top right corner. */
 			final RelativeLayout.LayoutParams zoominParams = new RelativeLayout.LayoutParams(
 					RelativeLayout.LayoutParams.WRAP_CONTENT,
@@ -111,7 +108,7 @@ public class SampleExtensive extends Activity implements OpenStreetMapConstants 
 
 			/* Create a ImageView with a zoomOut-Icon. */
 			final ImageView ivZoomOut = new ImageView(this);
-			ivZoomOut.setImageResource(R.drawable.zoom_out);
+			ivZoomOut.setImageResource(org.osmdroid.R.drawable.zoom_out);
 
 			/* Create RelativeLayoutParams, that position it in the top left corner. */
 			final RelativeLayout.LayoutParams zoomoutParams = new RelativeLayout.LayoutParams(
@@ -131,9 +128,15 @@ public class SampleExtensive extends Activity implements OpenStreetMapConstants 
 
 		/* MiniMap */
 		{
-			mMiniMapOverlay = new MinimapOverlay(this, mOsmv.getTileRequestCompleteHandler());
-			this.mOsmv.getOverlays().add(mMiniMapOverlay);
+			mMiniMapOverlay = new MinimapOverlay(this, mMapView.getTileRequestCompleteHandler());
+			this.mMapView.getOverlays().add(mMiniMapOverlay);
 		}
+
+		// Default location and zoom level
+		IMapController mapController = mMapView.getController();
+		mapController.setZoom(13);
+		GeoPoint startPoint = new GeoPoint(50.936255, 6.957779);
+		mapController.setCenter(startPoint);
 
 		// PathOverlay pathOverlay = new PathOverlay(Color.RED, this);
 		// pathOverlay.addPoint(new GeoPoint(40.714623, -74.006605));
@@ -141,7 +144,7 @@ public class SampleExtensive extends Activity implements OpenStreetMapConstants 
 		// pathOverlay.addPoint(new GeoPoint(34.052186, -118.243932));
 		// pathOverlay.getPaint().setStrokeWidth(50.0f);
 		// pathOverlay.setAlpha(100);
-		// this.mOsmv.getOverlays().add(pathOverlay);
+		// this.mMapView.getOverlays().add(pathOverlay);
 
 		this.setContentView(rl);
 	}
@@ -164,7 +167,7 @@ public class SampleExtensive extends Activity implements OpenStreetMapConstants 
 		{
 			for (final ITileSource tileSource : TileSourceFactory.getTileSources()) {
 				subMenu.add(0, 1000 + tileSource.ordinal(), Menu.NONE,
-						tileSource.localizedName(mResourceProxy));
+						tileSource.name());
 			}
 		}
 
@@ -186,16 +189,16 @@ public class SampleExtensive extends Activity implements OpenStreetMapConstants 
 			return true;
 
 		case MENU_TILE_SOURCE_ID:
-			this.mOsmv.invalidate();
+			this.mMapView.invalidate();
 			return true;
 
 		case MENU_MINIMAP_ID:
 			mMiniMapOverlay.setEnabled(!mMiniMapOverlay.isEnabled());
-			this.mOsmv.invalidate();
+			this.mMapView.invalidate();
 			return true;
 
 		case MENU_ANIMATION_ID:
-			// this.mOsmv.getController().animateTo(52370816, 9735936,
+			// this.mMapView.getController().animateTo(52370816, 9735936,
 			// MapControllerOld.AnimationType.MIDDLEPEAKSPEED,
 			// MapControllerOld.ANIMATION_SMOOTHNESS_HIGH,
 			// MapControllerOld.ANIMATION_DURATION_DEFAULT); // Hannover
@@ -203,14 +206,14 @@ public class SampleExtensive extends Activity implements OpenStreetMapConstants 
 			// new Handler().postDelayed(new Runnable(){
 			// @Override
 			// public void run() {
-			// SampleExtensive.this.mOsmv.getController().stopAnimation(false);
+			// SampleExtensive.this.mMapView.getController().stopAnimation(false);
 			// }
 			// }, 500);
 			return true;
 
 		default:
 			ITileSource tileSource = TileSourceFactory.getTileSource(item.getItemId() - 1000);
-			mOsmv.setTileSource(tileSource);
+			mMapView.setTileSource(tileSource);
 			mMiniMapOverlay.setTileSource(tileSource);
 		}
 		return false;

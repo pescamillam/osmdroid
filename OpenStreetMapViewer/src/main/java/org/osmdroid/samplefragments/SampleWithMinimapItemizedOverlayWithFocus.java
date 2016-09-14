@@ -3,7 +3,7 @@ package org.osmdroid.samplefragments;
 
 import java.util.ArrayList;
 
-import org.osmdroid.RotationGestureOverlay;
+import org.osmdroid.views.overlay.gestures.RotationGestureOverlay;
 import org.osmdroid.api.IGeoPoint;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.overlay.ItemizedIconOverlay;
@@ -12,6 +12,7 @@ import org.osmdroid.views.overlay.MinimapOverlay;
 import org.osmdroid.views.overlay.OverlayItem;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -65,7 +66,7 @@ public class SampleWithMinimapItemizedOverlayWithFocus extends BaseSampleFragmen
 		/* Itemized Overlay */
 		{
 			/* Create a static ItemizedOverlay showing some Markers on various cities. */
-			final ArrayList<OverlayItem> items = new ArrayList<OverlayItem>();
+			final ArrayList<OverlayItem> items = new ArrayList<>();
 			items.add(new OverlayItem("Hannover", "Tiny SampleDescription", new GeoPoint(52370816,
 					9735936))); // Hannover
 			items.add(new OverlayItem("Berlin", "This is a relatively short SampleDescription.",
@@ -78,7 +79,7 @@ public class SampleWithMinimapItemizedOverlayWithFocus extends BaseSampleFragmen
 					-122419200))); // San Francisco
 
 			/* OnTapListener for the Markers, shows a simple Toast. */
-			mMyLocationOverlay = new ItemizedOverlayWithFocus<OverlayItem>(items,
+			mMyLocationOverlay = new ItemizedOverlayWithFocus<>(items,
 					new ItemizedIconOverlay.OnItemGestureListener<OverlayItem>() {
 						@Override
 						public boolean onItemSingleTapUp(final int index, final OverlayItem item) {
@@ -97,13 +98,19 @@ public class SampleWithMinimapItemizedOverlayWithFocus extends BaseSampleFragmen
 											+ ") got long pressed", Toast.LENGTH_LONG).show();
 							return false;
 						}
-					}, mResourceProxy);
+					}, context);
 			mMyLocationOverlay.setFocusItemsOnTap(true);
 			mMyLocationOverlay.setFocusedItem(0);
+			//https://github.com/osmdroid/osmdroid/issues/317
+			//you can override the drawing characteristics with this
+			mMyLocationOverlay.setMarkerBackgroundColor(Color.BLUE);
+			mMyLocationOverlay.setMarkerTitleForegroundColor(Color.WHITE);
+			mMyLocationOverlay.setMarkerDescriptionForegroundColor(Color.WHITE);
+			mMyLocationOverlay.setDescriptionBoxPadding(15);
 
 			mMapView.getOverlays().add(mMyLocationOverlay);
 
-			mRotationGestureOverlay = new RotationGestureOverlay(context, mMapView);
+			mRotationGestureOverlay = new RotationGestureOverlay(mMapView);
 			mRotationGestureOverlay.setEnabled(false);
 			mMapView.getOverlays().add(mRotationGestureOverlay);
 		}
